@@ -277,9 +277,9 @@ __pycache__/
 **/dotnet-tools.json
 
 # Optionally ignore the entire obj/Debug directory
-Jio.Web.Application/Jio.Web.Application/bin/
-Jio.Web.Application/Jio.Web.Application/obj/Debug
-Jio.Web.Application/Jio.Web.Application/obj/
+ProjectUploader/bin/
+ProjectUploader/obj/Debug
+ProjectUploader/obj/
 
 # Ignore all pdb files
 *.pdb
@@ -297,13 +297,13 @@ obj/
 *.log
 
 # Ignore specific files in obj/Debug
-jio.web.application/obj/Debug/jio.web.application.csproj.AssemblyReference.cache
-obj/Debug/jio.web.application.dll
-jio.web.application/obj/Debug/jio.web.application.pdb
+ProjectUploader/obj/Debug/ProjectUploader.csproj.AssemblyReference.cache
+obj/Debug/ProjectUploader.dll
+ProjectUploader/obj/Debug/ProjectUploader.pdb
 **/obj/
 
 # Ignore specific files in obj/Debug
-obj/Debug/jio.web.application.csproj.AssemblyReference.cache
-obj/Debug/jio.web.application.dll
-obj/Debug/jio.web.application.pdb 
+obj/Debug/ProjectUploader.csproj.AssemblyReference.cache
+obj/Debug/ProjectUploader.dll
+obj/Debug/ProjectUploader.pdb 
 
