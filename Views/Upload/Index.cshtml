@@ -1,0 +1,118 @@
+﻿@using Newtonsoft.Json
+@model List<ProjectUploader.Models.AuditRecord>
+
+@{
+    ViewData["Title"] = "Upload Audit Plan";
+    bool isPreviewMode = Convert.ToBoolean(TempData["PreviewMode"] ?? false);
+}
+
+<div class="container mt-4">
+    <h4 class="mb-4">Upload Audit Plan File</h4>
+
+    @* Show errors or success messages *@
+    @if (!string.IsNullOrEmpty(Convert.ToString(TempData["ErrorMessage"])))
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+    @if (!string.IsNullOrEmpty(Convert.ToString(TempData["Message"])))
+    {
+        <div class="alert alert-success">@TempData["Message"]</div>
+    }
+
+    @* Upload Form *@
+    <form asp-action="UploadFile" asp-controller="Upload" method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="file" class="form-label">Select Excel File (.xlsx)</label>
+            <input type="file" name="file" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Preview</button>
+    </form>
+
+    <hr />
+
+    @* Filter Form *@
+    <h5 class="mt-4">Filter by Audit Date</h5>
+    <form asp-action="FilterData" method="post">
+        <div class="row g-3 align-items-center mb-3">
+            <div class="col-auto">
+                <label for="fromDate" class="col-form-label">From Date</label>
+                <input type="date" id="fromDate" name="fromDate" class="form-control" required />
+            </div>
+            <div class="col-auto">
+                <label for="toDate" class="col-form-label">To Date</label>
+                <input type="date" id="toDate" name="toDate" class="form-control" required />
+            </div>
+            <div class="col-auto mt-4">
+                <button type="submit" class="btn btn-secondary">Apply Filter</button>
+            </div>
+        </div>
+    </form>
+
+    @* Preview or Filtered Data Table *@
+    @if (Model != null && Model.Any())
+    {
+        <h5 class="mt-4">Audit Records</h5>
+
+        @if (isPreviewMode)
+        {
+            <form asp-action="SaveAuditRecords" method="post">
+                <input type="hidden" name="jsonData" value='@Html.Raw(JsonConvert.SerializeObject(Model))' />
+                <table class="table table-bordered mt-3">
+                    <thead class="table-primary">
+                        <tr>
+                            <th>S. No.</th>
+                            <th>Delivery Head</th>
+                            <th>Project</th>
+                            <th>Auditee</th>
+                            <th>Auditor</th>
+                            <th>Audit Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Count; i++)
+                        {
+                            <tr>
+                                <td>@(i + 1)</td>
+                                <td>@Model[i].DELIVERY_HEAD</td>
+                                <td>@Model[i].PROJECT</td>
+                                <td>@Model[i].AUTITEE</td>
+                                <td>@Model[i].AUDITOR</td>
+                                <td>@Model[i].AUDIT_DATE?.ToString("dd-MMM-yy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <button type="submit" class="btn btn-success">Save to Database</button>
+            </form>
+        }
+        else
+        {
+            <table class="table table-bordered mt-3">
+                <thead class="table-primary">
+                    <tr>
+                        <th>S. No.</th>
+                        <th>Delivery Head</th>
+                        <th>Project</th>
+                        <th>Auditee</th>
+                        <th>Auditor</th>
+                        <th>Audit Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.Count; i++)
+                    {
+                        <tr>
+                            <td>@(i + 1)</td>
+                            <td>@Model[i].DELIVERY_HEAD</td>
+                            <td>@Model[i].PROJECT</td>
+                            <td>@Model[i].AUTITEE</td>
+                            <td>@Model[i].AUDITOR</td>
+                            <td>@Model[i].AUDIT_DATE?.ToString("dd-MMM-yy")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</div>

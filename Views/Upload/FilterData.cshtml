@@ -1,0 +1,61 @@
+﻿@model List<ProjectUploader.Models.AuditRecord>
+
+@{
+    ViewData["Title"] = "Filter Audit Records";
+}
+ 
+<div class="container mt-4">
+    <h4>Filter Audit Plans</h4>
+
+    <form asp-action="FilterData" asp-controller="Upload" method="post" class="mb-4">
+        <div class="row">
+            <div class="col-md-4">
+                <label>From Date</label>
+                <input type="date" name="fromDate" class="form-control" required />
+            </div>
+            <div class="col-md-4">
+                <label>To Date</label>
+                <input type="date" name="toDate" class="form-control" required />
+            </div>
+            <div class="col-md-4 mt-4">
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </div>
+        </div>
+    </form>
+
+    @if (Model != null && Model.Any())
+    {
+        <table class="table table-bordered">
+            <thead class="table-primary">
+                <tr>
+                    <th>SAP ID</th>
+                    <th>Audit ID</th>
+                    <th>Delivery Head</th>
+                    <th>Project</th>
+                    <th>Auditee</th>
+                    <th>Auditor</th>
+                    <th>Audit Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.SAP_ID</td>
+                        <td>@item.AUDIT_ID</td>
+                        <td>@item.DELIVERY_HEAD</td>
+                        <td>@item.PROJECT</td>
+                        <td>@item.AUTITEE</td>
+                        <td>@item.AUDITOR</td>
+                        <td>@item.AUDIT_DATE?.ToString("dd-MMM-yyyy")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>No records to display.</p>
+    }
+</div>
+
