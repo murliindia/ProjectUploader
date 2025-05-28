@@ -1,0 +1,212 @@
+﻿@using Microsoft.AspNetCore.Html
+@model ProjectUploader.Models.ProjectDetailsViewModel
+
+@{
+    ViewData["Title"] = "Project Details";
+}
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<h2>Project Details with Process Area Color Summary</h2>
+
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>Project Detail</th>
+            <th>Value</th>
+            <th>Process Area</th>
+            <th>Color</th>
+        </tr>
+    </thead>
+    <tbody>
+        @RenderRow("Project Name", Model.Project.ProjectName, 0)
+        @RenderRow("Project Manager", Model.Project.ProjectManager, 1)
+        @RenderRow("Account Manager", Model.Project.AccountManager, 2)
+        @RenderRow("Current Stage", Model.Project.CurrentStage, 3)
+        @RenderRow("Auditor Name", Model.Project.AuditorName, 4)
+        @RenderRow("Project Type", Model.Project.ProjectType, 5)
+        @RenderRow("Audit Date", Model.Project.AuditDate?.ToString("yyyy-MM-dd"), 6)
+        @RenderRow("Teams Audited", Model.Project.TeamsAudited, 7)
+        @RenderRow("Forthcoming Delivery Date", Model.Project.ForthcomingDeliveryDate, 8)
+        @RenderRow("Review Collaboration Tool", Model.Project.ReviewCollaborationTool, 9)
+    </tbody>
+</table>
+
+<hr />
+
+<h3>Process Area Compliance Details (Editable)</h3>
+<div class="mb-3">
+    <label for="complianceFilter" class="form-label">Filter by Compliance:</label>
+    <select id="complianceFilter" class="form-select" onchange="filterCompliance()">
+        <option value="">-- All --</option>
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+    </select>
+</div>
+<form method="post" asp-controller="Project" asp-action="SaveCompliance">
+    <input type="hidden" name="projectId" value="@Model.Project.ProjectId" />
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Process Area</th>
+                <th>Question</th>
+                <th>Compliance</th>
+                <th>Remarks</th>
+                <th>Action Item</th> <!-- New header -->
+            </tr>
+        </thead>
+        <tbody id="complianceTableBody">
+            @if (Model.ComplianceDetails.Any())
+            {
+                for (int i = 0; i < Model.ComplianceDetails.Count; i++)
+                {
+                    var item = Model.ComplianceDetails[i];
+                    <tr>
+                        <td>
+                            <input type="hidden" name="ComplianceDetails[@i].Id" value="@item.Id" />
+                            @item.ProcessArea
+                        </td>
+                        <td>
+                            <input type="text" class="form-control" name="ComplianceDetails[@i].QuestionText" value="@item.QuestionText" />
+                        </td>
+                        <td>
+                            <select class="form-select compliance-select" name="ComplianceDetails[@i].Compliance" onchange="toggleActionItem(this)">
+                                <option value="Yes" selected="@(item.Compliance == "Yes")">Yes</option>
+                                <option value="No" selected="@(item.Compliance == "No")">No</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="text" class="form-control" name="ComplianceDetails[@i].Remarks" value="@item.Remarks" />
+                        </td>
+                        <td>
+                            <select class="form-select action-item-dropdown"
+                                    name="ComplianceDetails[@i].ActionItem"
+                                    style="@(item.Compliance == "No" ? "" : "display:none")"
+                            @(item.Compliance == "No" ? "" : "disabled")>
+                                <option value="Pending" selected="@(item.ActionItem?.Trim() == "Pending")">Pending</option>
+                                <option value="Closed" selected="@(item.ActionItem?.Trim() == "Closed")">Closed</option>
+                            </select>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="5" class="text-center">No records found.</td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+    <button type="submit" class="btn btn-primary" @(Model.ComplianceDetails.Any() ? "" : "disabled")>Save</button>
+</form>
+
+
+@functions {
+    private IHtmlContent RenderRow(string label, string value, int index)
+    {
+        var processArea = "";
+        var color = "";
+        var colorHex = "#ffffff";
+
+        if (Model.ColorSummaries != null && Model.ColorSummaries.Count > index)
+        {
+            processArea = Model.ColorSummaries[index].AreaName;
+            color = Model.ColorSummaries[index].ColorValue;
+            colorHex = GetColorHex(color);
+        }
+
+        return new HtmlString($@"
+            <tr>
+                <td>{label}</td>
+                <td>{value}</td>
+                <td>{processArea}</td>
+                <td style='background-color:{colorHex}; text-align:center;'></td>
+            </tr>");
+    }
+
+    private string GetColorHex(string colorName)
+    {
+        if (string.IsNullOrWhiteSpace(colorName))
+            return "#ffffff";
+
+        var normalized = colorName.Trim().ToLowerInvariant();
+
+        if (normalized.StartsWith("rgb"))
+        {
+            var rgbValues = normalized
+                .Replace("rgb(", "")
+                .Replace(")", "")
+                .Split(',');
+
+            if (rgbValues.Length == 3 &&
+                byte.TryParse(rgbValues[0], out var r) &&
+                byte.TryParse(rgbValues[1], out var g) &&
+                byte.TryParse(rgbValues[2], out var b))
+            {
+                return $"#{r:X2}{g:X2}{b:X2}";
+            }
+            else
+            {
+                return "#ffffff";
+            }
+        }
+
+        return normalized switch
+        {
+            "red" => "#ff0000",
+            "green" => "#00ff00",
+            "yellow" => "#ffff00",
+            "lightgreen" => "#92D050",
+            "lightyellow" => "#ffffe0",
+            _ => "#ffffff"
+        };
+    }
+}
+
+<script>
+    function filterCompliance() {
+        const filterValue = document.getElementById("complianceFilter").value.toLowerCase();
+        const rows = document.querySelectorAll("#complianceTableBody tr");
+
+        rows.forEach(row => {
+            const complianceCell = row.querySelector("select[name*='.Compliance'], input[name*='.Compliance']");
+            let complianceValue = complianceCell?.value?.toLowerCase() || "";
+
+            if (!filterValue || complianceValue === filterValue) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+
+    function toggleActionItem(selectElem) {
+         const row = selectElem.closest('tr');
+         const actionItemDropdown = row.querySelector('.action-item-dropdown');
+
+         if (selectElem.value === 'No') {
+             actionItemDropdown.style.display = '';
+             actionItemDropdown.disabled = false;
+
+             if (!actionItemDropdown.value) {
+                 actionItemDropdown.value = 'Pending'; // default
+             }
+         } else {
+             actionItemDropdown.style.display = 'none';
+             actionItemDropdown.disabled = true;
+             actionItemDropdown.value = ""; // Clear value when disabled
+         }
+     }
+
+     document.addEventListener("DOMContentLoaded", function () {
+         document.querySelectorAll(".compliance-select").forEach(select => toggleActionItem(select));
+     });
+
+</script>
