@@ -11,6 +11,11 @@
         <label for="AuditID">Select Audit ID:</label>
         @Html.DropDownList("AuditID", auditList, "-- Select Audit ID --", new { @class = "form-control", required = "required", id = "AuditID" })
     </div>
+    <div class="form-group mt-2">
+        <label for="Project">Select Project Name:</label>
+        @Html.DropDownList("Project", ViewBag.ProjectList as List<SelectListItem>, "-- Select Project Name --", new { @class = "form-control", required = "required", id = "Project" })
+    </div>
+
 
     <div class="form-group mt-2">
         <label for="file">Select Excel file:</label>
@@ -66,27 +71,90 @@
             });
         }
 
-           async function checkAuditAndUpload() {
+        //    async function checkAuditAndUpload() {
+        //     const auditSelect = document.getElementById("AuditID");
+        //     const selectedAuditId = auditSelect.value;
+        //     const fileInput = document.getElementById("file");
+
+        //     if (!selectedAuditId) {
+        //         alert("Please select an Audit ID.");
+        //         return;
+        //     }
+
+        //     try {
+        //         const response = await fetch(`/Project/CheckProjectExists?projectId=${encodeURIComponent(selectedAuditId)}`);
+        //         const data = await response.json();
+
+        //         if (data.exists) {
+        //             // Audit ID exists, redirect to view
+        //             window.location.href = '/project/view/' + encodeURIComponent(selectedAuditId);
+        //         } else {
+        //             // Audit ID doesn't exist, require file
+        //             if (!fileInput || !fileInput.files.length) {
+        //                 alert("Audit ID does not exist. Please select a file to upload.");
+        //                 fileInput.focus();
+        //                 return;
+        //             }
+
+        //             const formData = new FormData();
+        //             formData.append("file", fileInput.files[0]);
+        //             formData.append("AuditID", selectedAuditId);
+
+        //             const uploadResponse = await fetch('@Url.Action("UploadProjectDetails", "Project")', {
+        //                 method: "POST",
+        //                 body: formData
+        //             });
+
+        //             if (!uploadResponse.ok) {
+        //                 const errorText = await uploadResponse.text();
+        //                 alert("File upload failed: " + errorText);
+        //                 return;
+        //             }
+
+        //             const result = await uploadResponse.json();
+        //             if (result.success) {
+        //                 window.location.href = '/project/view/' + encodeURIComponent(result.auditId);
+        //             } else {
+        //                 alert("Upload failed: " + result.error);
+        //             }
+        //         }
+        //     } catch (error) {
+        //         console.error("Error:", error);
+        //         alert("An error occurred. Please try again.");
+        //     }
+        // }
+
+                async function checkAuditAndUpload() {
             const auditSelect = document.getElementById("AuditID");
-            const selectedAuditId = auditSelect.value;
+            const projectSelect = document.getElementById("Project");
             const fileInput = document.getElementById("file");
 
+
+            const selectedAuditId = auditSelect.value;
+            const selectedProject = projectSelect.value;
+            
             if (!selectedAuditId) {
                 alert("Please select an Audit ID.");
                 return;
             }
 
-            try {
-                const response = await fetch(`/Project/CheckProjectExists?projectId=${encodeURIComponent(selectedAuditId)}`);
-                const data = await response.json();
+            if (!selectedProject) {
+                alert("Please select a Project Name.");
+                return;
+            }
 
+            try {
+                 
+                const response = await fetch(`/Project/CheckAuditProjectExists?auditId=${encodeURIComponent(selectedAuditId)}&projectName=${encodeURIComponent(selectedProject)}`);
+                const data = await response.json();
+               
                 if (data.exists) {
-                    // Audit ID exists, redirect to view
-                    window.location.href = '/project/view/' + encodeURIComponent(selectedAuditId);
+                    // Audit+Project exists, redirect to view
+                    window.location.href = `/project/view/${encodeURIComponent(selectedAuditId)}/${encodeURIComponent(selectedProject)}`;
                 } else {
-                    // Audit ID doesn't exist, require file
+                    // Record does not exist, require file upload
                     if (!fileInput || !fileInput.files.length) {
-                        alert("Audit ID does not exist. Please select a file to upload.");
+                        alert("Audit/Project does not exist. Please select a file to upload.");
                         fileInput.focus();
                         return;
                     }
@@ -94,6 +162,7 @@
                     const formData = new FormData();
                     formData.append("file", fileInput.files[0]);
                     formData.append("AuditID", selectedAuditId);
+                    formData.append("Project", selectedProject);
 
                     const uploadResponse = await fetch('@Url.Action("UploadProjectDetails", "Project")', {
                         method: "POST",
@@ -108,7 +177,8 @@
 
                     const result = await uploadResponse.json();
                     if (result.success) {
-                        window.location.href = '/project/view/' + encodeURIComponent(result.auditId);
+                        
+                        window.location.href = `/project/view/${encodeURIComponent(result.auditId)}/${encodeURIComponent(result.project)}`;
                     } else {
                         alert("Upload failed: " + result.error);
                     }

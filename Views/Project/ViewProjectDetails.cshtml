@@ -50,6 +50,7 @@
 </div>
 <form method="post" asp-controller="Project" asp-action="SaveCompliance">
     <input type="hidden" name="projectId" value="@Model.Project.ProjectId" />
+    <input type="hidden" name="projectname" value="@Model.Project.ProjectName" />
     <table class="table table-bordered">
         <thead>
             <tr>
@@ -105,6 +106,13 @@
 
     </table>
     <button type="submit" class="btn btn-primary" @(Model.ComplianceDetails.Any() ? "" : "disabled")>Save</button>
+    <button type="button" class="btn btn-primary" onclick="copyHtmlAndOpenOutlook()">Email Project Summary</button>
+  @*   <button class="btn btn-primary" onclick="exportAndOpenInOutlook()">Send Email via Outlook</button>
+    <a href="@Url.Action("ExportEmailScript", "Project", new { auditId = Model.Project.ProjectId })">
+        <button type="button" class="btn btn-primary">Send Email</button>
+    </a> *@
+
+
 </form>
 
 
@@ -209,4 +217,45 @@
          document.querySelectorAll(".compliance-select").forEach(select => toggleActionItem(select));
      });
 
+      function copyHtmlAndOpenOutlook() {
+        const htmlContent = document.getElementById("main-content")?.outerHTML || document.body.outerHTML;
+
+        // Copy HTML to clipboard
+        const blob = new Blob([htmlContent], { type: "text/html" });
+        const data = [new ClipboardItem({ "text/html": blob })];
+
+        navigator.clipboard.write(data).then(() => {
+            alert("HTML copied to clipboard. Now opening Outlook...");
+            window.location.href = "mailto:?subject=Project Audit Report";
+        }).catch(err => {
+            alert("Failed to copy HTML. Error: " + err);
+        });
+    }
+
+
+
 </script>
+<script>
+    function exportAndOpenInOutlook() {
+        const emailSubject = "Project Audit Report";
+        const htmlContent = document.documentElement.outerHTML;
+
+        // Copy HTML to clipboard
+        navigator.clipboard.writeText(htmlContent).then(() => {
+            alert("Full HTML copied to clipboard. Opening Outlook...");
+
+            // Launch Outlook with subject line (body too long to fit in mailto)
+            const mailto = `mailto:?subject=${encodeURIComponent(emailSubject)}`;
+            window.location.href = mailto;
+
+            // Now instruct user to paste in Outlook
+            setTimeout(() => {
+                alert("Please paste (Ctrl+V) the content into the email body in Outlook.");
+            }, 2000);
+        }).catch(err => {
+            console.error("Clipboard error: ", err);
+            alert("Failed to copy. Please try again.");
+        });
+    }
+</script>
+
