@@ -81,7 +81,7 @@ namespace ProjectUploader.Controllers
 
 
         [HttpPost]
-        public async Task<IActionResult> UploadProjectDetails(IFormFile file, string AuditID,string Project)
+        public async Task<IActionResult> UploadProjectDetails(IFormFile file, string AuditID, string Project)
         {
             Project = Regex.Replace(Project.Trim(), @"\s+", " ");
             if (string.IsNullOrEmpty(AuditID))
@@ -102,7 +102,7 @@ namespace ProjectUploader.Controllers
             using var memory = new MemoryStream();
             await file.CopyToAsync(memory);
             memory.Position = 0;
-            
+
 
             using (var stream = file.OpenReadStream())
             using (var workbook = new XLWorkbook(stream))
@@ -262,7 +262,7 @@ namespace ProjectUploader.Controllers
                     command.Parameters.AddWithValue("@CurrentStage", (object?)details.CurrentStage ?? DBNull.Value);
                     command.Parameters.AddWithValue("@AuditorName", (object?)details.AuditorName ?? DBNull.Value);
                     command.Parameters.AddWithValue("@ProjectType", (object?)details.ProjectType ?? DBNull.Value);
-                    
+
                     command.Parameters.AddWithValue("@TeamsAudited", (object?)details.TeamsAudited ?? DBNull.Value);
                     command.Parameters.AddWithValue("@AuditDate", (object?)auditDate ?? DBNull.Value);
                     command.Parameters.AddWithValue("@ForthcomingDeliveryDate", (object?)deliveryDate ?? DBNull.Value);
@@ -278,7 +278,7 @@ namespace ProjectUploader.Controllers
 
                         throw ex;
                     }
-                  
+
 
                     // Save ProcessAreaComplianceDetails
                     foreach (var section in sectionData)
@@ -322,7 +322,7 @@ namespace ProjectUploader.Controllers
 
                 }
 
-                return Json(new { success = true, auditId = AuditID, project= Project });
+                return Json(new { success = true, auditId = AuditID, project = Project });
 
             }
         }
@@ -626,7 +626,7 @@ namespace ProjectUploader.Controllers
 
         [HttpPost]
         public async Task<IActionResult> EmailProjectDetails(string auditId)
-        { 
+        {
 
             var emailHtml = await _viewRenderService.RenderToStringAsync("Project/View", auditId); // Or manually build HTML string
 
