@@ -1,0 +1,133 @@
+﻿@using ProjectUploader.ViewModel
+@model AuditListViewModel
+
+@{
+    ViewData["Title"] = "Audit Master";
+}
+
+<div class="container mt-5">
+    <h2>Audit Master</h2>
+
+    @* Alerts *@
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    <div class="mb-4">
+        <a asp-controller="ProjectAudit" asp-action="Index" class="btn btn-primary">Go to Create Project</a>
+
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <form asp-action="Save" method="post" class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label for="Audit_ID" class="form-label">Audit ID</label>
+                    <input type="text" name="Audit_ID" id="Audit_ID" class="form-control" required />
+                </div>
+                <div class="col-md-4">
+                    <label for="Name" class="form-label">Name</label>
+                    <input type="text" name="Name" id="Name" class="form-control" required />
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <button type="reset" class="btn btn-secondary" onclick="clearForm()">Clear</button>
+                </div>
+            </form>
+
+            <table class="table table-bordered table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Audit ID</th>
+                        <th>Name</th>
+                        <th style="width: 180px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Audits)
+                    {
+                        <tr>
+                            <td>@item.Audit_ID</td>
+                            <td>@item.Name</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-primary me-1"
+                                        onclick="fillForm('@item.Audit_ID', '@item.Name')">
+                                    Edit
+                                </button>
+
+                                <form asp-action="Delete" method="post" class="d-inline">
+                                    <input type="hidden" name="id" value="@item.Audit_ID" />
+                                    <button type="submit" class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Are you sure to delete this item?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @* Pagination *@
+            <nav aria-label="Page navigation example">
+                <ul class="pagination justify-content-center">
+
+                    @if (Model.PageNumber > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" href="@Url.Action("Index", new { pageNumber = Model.PageNumber - 1, pageSize = Model.PageSize })">Previous</a>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="page-item disabled"><span class="page-link">Previous</span></li>
+                    }
+
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        if (i == Model.PageNumber)
+                        {
+                            <li class="page-item active"><span class="page-link">@i</span></li>
+                        }
+                        else
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="@Url.Action("Index", new { pageNumber = i, pageSize = Model.PageSize })">@i</a>
+                            </li>
+                        }
+                    }
+
+                    @if (Model.PageNumber < Model.TotalPages)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" href="@Url.Action("Index", new { pageNumber = Model.PageNumber + 1, pageSize = Model.PageSize })">Next</a>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="page-item disabled"><span class="page-link">Next</span></li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function fillForm(id, name) {
+            document.getElementById('Audit_ID').value = id;
+            document.getElementById('Audit_ID').readOnly = true;
+            document.getElementById('Name').value = name;
+        }
+
+        function clearForm() {
+            document.getElementById('Audit_ID').value = '';
+            document.getElementById('Audit_ID').readOnly = false;
+            document.getElementById('Name').value = '';
+        }
+    </script>
+}
