@@ -128,7 +128,7 @@
                         <td>@item.ACTUAL_AUDIT_DATE?.ToString("dd-MM-yyyy")</td>
                         <td>@item.AUDITOR</td>
                         <td>@item.AUDIT</td>
-                        <td class="text-center">
+                       @*  <td class="text-center">
                             <a asp-action="Edit" asp-route-auditId="@item.AUDIT_ID" asp-route-projectName="@item.PROJECT_NAME" class="btn btn-sm btn-outline-primary me-1">
                                 <i class="bi bi-pencil-square"></i> Edit
                             </a>
@@ -139,7 +139,7 @@
                                     <i class="bi bi-trash"></i> Delete
                                 </button>
                             </form>
-                        </td>
+                        </td> *@
                     </tr>
                 }
             </tbody>

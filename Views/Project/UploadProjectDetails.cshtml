@@ -3,6 +3,13 @@
     ViewData["Title"] = "Upload Project Details";
     var auditList = ViewBag.AuditList as List<SelectListItem>;
 }
+@if (TempData["UploadMessage"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @TempData["UploadMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
 <h2>Upload Project Details Excel</h2>
 
@@ -11,11 +18,11 @@
         <label for="AuditID">Select Audit ID:</label>
         @Html.DropDownList("AuditID", auditList, "-- Select Audit ID --", new { @class = "form-control", required = "required", id = "AuditID" })
     </div>
+
     <div class="form-group mt-2">
         <label for="Project">Select Project Name:</label>
-        @Html.DropDownList("Project", ViewBag.ProjectList as List<SelectListItem>, "-- Select Project Name --", new { @class = "form-control", required = "required", id = "Project" })
+        @Html.DropDownList("Project", new List<SelectListItem>(), "-- Select Project Name --", new { @class = "form-control", required = "required", id = "Project" })
     </div>
-
 
     <div class="form-group mt-2">
         <label for="file">Select Excel file:</label>
@@ -23,8 +30,6 @@
     </div>
 
     <div class="mt-3">
-        <!-- No Upload button anymore -->
-        
         <button type="button" class="btn btn-success" onclick="checkAuditAndUpload()">Upload and View</button>
     </div>
 </form>
@@ -32,107 +37,49 @@
 <div id="message" class="mt-3"></div>
 
 @section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
     <script>
+        // Bind Project dropdown when Audit ID changes
+        $('#AuditID').change(function () {
+            const auditId = $(this).val();
+            const $projectSelect = $('#Project');
 
+            $projectSelect.empty().append($('<option>', {
+                value: '',
+                text: '-- Loading Projects --'
+            }));
 
-        function uploadAndRedirect() {
-            var auditId = document.getElementById("AuditID").value;
-            var fileInput = document.getElementById("file");
+            if (auditId) {
+                $.getJSON('/Project/GetProjectsByAuditId', { auditId: auditId }, function (data) {
+                    $projectSelect.empty().append($('<option>', {
+                        value: '',
+                        text: '-- Select Project Name --'
+                    }));
 
-            if (!auditId) {
-                alert("Please select an Audit ID.");
-                return;
+                    $.each(data, function (i, item) {
+                        $projectSelect.append($('<option>', {
+                            value: item.value,
+                            text: item.text
+                        }));
+                    });
+                });
+            } else {
+                $projectSelect.empty().append($('<option>', {
+                    value: '',
+                    text: '-- Select Project Name --'
+                }));
             }
-            if (!fileInput.files.length) {
-                alert("Please select an Excel file.");
-                return;
-            }
+        });
 
-            var formData = new FormData();
-            formData.append("AuditID", auditId);
-            formData.append("file", fileInput.files[0]);
-
-            fetch('@Url.Action("UploadProjectDetails", "Project")', {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Redirect to view page after successful upload
-                    window.location.href = '/project/view/' + encodeURIComponent(auditId);
-                } else {
-                    document.getElementById("message").innerHTML = '<div class="alert alert-danger">' + data.error + '</div>';
-                }
-            })
-            .catch(error => {
-                document.getElementById("message").innerHTML = '<div class="alert alert-danger">Upload failed. Please try again.</div>';
-                console.error(error);
-            });
-        }
-
-        //    async function checkAuditAndUpload() {
-        //     const auditSelect = document.getElementById("AuditID");
-        //     const selectedAuditId = auditSelect.value;
-        //     const fileInput = document.getElementById("file");
-
-        //     if (!selectedAuditId) {
-        //         alert("Please select an Audit ID.");
-        //         return;
-        //     }
-
-        //     try {
-        //         const response = await fetch(`/Project/CheckProjectExists?projectId=${encodeURIComponent(selectedAuditId)}`);
-        //         const data = await response.json();
-
-        //         if (data.exists) {
-        //             // Audit ID exists, redirect to view
-        //             window.location.href = '/project/view/' + encodeURIComponent(selectedAuditId);
-        //         } else {
-        //             // Audit ID doesn't exist, require file
-        //             if (!fileInput || !fileInput.files.length) {
-        //                 alert("Audit ID does not exist. Please select a file to upload.");
-        //                 fileInput.focus();
-        //                 return;
-        //             }
-
-        //             const formData = new FormData();
-        //             formData.append("file", fileInput.files[0]);
-        //             formData.append("AuditID", selectedAuditId);
-
-        //             const uploadResponse = await fetch('@Url.Action("UploadProjectDetails", "Project")', {
-        //                 method: "POST",
-        //                 body: formData
-        //             });
-
-        //             if (!uploadResponse.ok) {
-        //                 const errorText = await uploadResponse.text();
-        //                 alert("File upload failed: " + errorText);
-        //                 return;
-        //             }
-
-        //             const result = await uploadResponse.json();
-        //             if (result.success) {
-        //                 window.location.href = '/project/view/' + encodeURIComponent(result.auditId);
-        //             } else {
-        //                 alert("Upload failed: " + result.error);
-        //             }
-        //         }
-        //     } catch (error) {
-        //         console.error("Error:", error);
-        //         alert("An error occurred. Please try again.");
-        //     }
-        // }
-
-                async function checkAuditAndUpload() {
+        async function checkAuditAndUpload() {
             const auditSelect = document.getElementById("AuditID");
             const projectSelect = document.getElementById("Project");
             const fileInput = document.getElementById("file");
 
-
             const selectedAuditId = auditSelect.value;
             const selectedProject = projectSelect.value;
-            
+
             if (!selectedAuditId) {
                 alert("Please select an Audit ID.");
                 return;
@@ -144,15 +91,12 @@
             }
 
             try {
-                 
                 const response = await fetch(`/Project/CheckAuditProjectExists?auditId=${encodeURIComponent(selectedAuditId)}&projectName=${encodeURIComponent(selectedProject)}`);
                 const data = await response.json();
-               
+
                 if (data.exists) {
-                    // Audit+Project exists, redirect to view
                     window.location.href = `/project/view/${encodeURIComponent(selectedAuditId)}/${encodeURIComponent(selectedProject)}`;
                 } else {
-                    // Record does not exist, require file upload
                     if (!fileInput || !fileInput.files.length) {
                         alert("Audit/Project does not exist. Please select a file to upload.");
                         fileInput.focus();
@@ -171,13 +115,13 @@
 
                     if (!uploadResponse.ok) {
                         const errorText = await uploadResponse.text();
+                        console.log(errorText);
                         alert("File upload failed: " + errorText);
                         return;
                     }
 
                     const result = await uploadResponse.json();
                     if (result.success) {
-                        
                         window.location.href = `/project/view/${encodeURIComponent(result.auditId)}/${encodeURIComponent(result.project)}`;
                     } else {
                         alert("Upload failed: " + result.error);
@@ -188,7 +132,5 @@
                 alert("An error occurred. Please try again.");
             }
         }
-
-
     </script>
 }

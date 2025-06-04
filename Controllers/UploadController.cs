@@ -104,13 +104,47 @@ namespace ProjectUploader.Controllers
                 return RedirectToAction("Index");
             }
 
-            string sapId = GenerateRandomSapId();
-            var connStr = _config.GetConnectionString("DefaultConnection");
+            string connStr = _config.GetConnectionString("DefaultConnection");
 
             using (SqlConnection conn = new SqlConnection(connStr))
             {
                 await conn.OpenAsync();
 
+                // Collect all audit IDs from the uploaded data
+                var auditIdsToCheck = auditRecords
+                    .Where(x => !string.IsNullOrEmpty(x.AUDIT_ID))
+                    .Select(x => x.AUDIT_ID)
+                    .Distinct()
+                    .ToList();
+
+                // Prepare a single query to check for duplicates in DB
+                string auditIdParamList = string.Join(",", auditIdsToCheck.Select((id, index) => $"@id{index}"));
+                string checkQuery = $"SELECT AUDIT_ID FROM AUDIT_PLAN WHERE AUDIT_ID IN ({auditIdParamList})";
+
+                using (var checkCmd = new SqlCommand(checkQuery, conn))
+                {
+                    for (int i = 0; i < auditIdsToCheck.Count; i++)
+                    {
+                        checkCmd.Parameters.AddWithValue($"@id{i}", auditIdsToCheck[i]);
+                    }
+
+                    string existingAuditId = null;
+                    using (var reader = await checkCmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            existingAuditId = reader.GetString(0);
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(existingAuditId))
+                    {
+                        TempData["ErrorMessage"] = $"Audit ID already exists: {existingAuditId}. Please use a different Audit ID.";
+                        return RedirectToAction("Index");
+                    }
+                }
+
+                // No duplicates found, proceed with insert
                 foreach (var plan in auditRecords)
                 {
                     var cmd = new SqlCommand(
@@ -131,8 +165,8 @@ namespace ProjectUploader.Controllers
 
             TempData["Message"] = "Audit plans saved successfully!";
             return RedirectToAction("Index");
-
         }
+
 
         private string GenerateRandomSapId()
         {

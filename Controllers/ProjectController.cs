@@ -10,6 +10,9 @@ using System.Net;
 using DocumentFormat.OpenXml.EMMA;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Linq;
+using DocumentFormat.OpenXml.Spreadsheet;
+using HtmlAgilityPack;
 
 namespace ProjectUploader.Controllers
 {
@@ -32,14 +35,12 @@ namespace ProjectUploader.Controllers
         public async Task<IActionResult> UploadProjectDetails()
         {
             var auditList = new List<SelectListItem>();
-            var projectList = new List<SelectListItem>();
             var connStr = _config.GetConnectionString("DefaultConnection");
 
             using (var connection = new SqlConnection(connStr))
             {
                 await connection.OpenAsync();
 
-                // --- Get distinct AUDIT_IDs ---
                 var auditCommand = new SqlCommand("SELECT DISTINCT AUDIT_ID FROM AUDIT_PLAN ORDER BY AUDIT_ID", connection);
                 var auditReader = await auditCommand.ExecuteReaderAsync();
 
@@ -52,30 +53,45 @@ namespace ProjectUploader.Controllers
                     });
                 }
 
-                auditReader.Close(); // Important to close before new reader
-
-                // --- Get distinct PROJECT values ---
-                var projectCommand = new SqlCommand("SELECT DISTINCT PROJECT FROM AUDIT_PLAN WHERE PROJECT IS NOT NULL ORDER BY PROJECT", connection);
-                var projectReader = await projectCommand.ExecuteReaderAsync();
-
-                while (await projectReader.ReadAsync())
-                {
-                    projectList.Add(new SelectListItem
-                    {
-                        Value = projectReader["PROJECT"].ToString(),
-                        Text = projectReader["PROJECT"].ToString()
-                    });
-                }
-
-                projectReader.Close();
+                auditReader.Close(); // ensure it's closed even if project list is removed
             }
 
             ViewBag.AuditList = auditList;
-            ViewBag.ProjectList = projectList;
-
+            // ViewBag.ProjectList is removed - handled via AJAX now
             return View();
         }
 
+
+        [HttpGet]
+        public async Task<JsonResult> GetProjectsByAuditId(string auditId)
+        {
+            var projectList = new List<SelectListItem>();
+            var connStr = _config.GetConnectionString("DefaultConnection");
+
+            using (var connection = new SqlConnection(connStr))
+            {
+                await connection.OpenAsync();
+
+                var command = new SqlCommand(
+                    "SELECT DISTINCT PROJECT FROM AUDIT_PLAN WHERE AUDIT_ID = @AuditId AND PROJECT IS NOT NULL ORDER BY PROJECT", connection);
+
+                command.Parameters.AddWithValue("@AuditId", auditId ?? (object)DBNull.Value);
+
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        projectList.Add(new SelectListItem
+                        {
+                            Value = reader["PROJECT"].ToString(),
+                            Text = reader["PROJECT"].ToString()
+                        });
+                    }
+                }
+            }
+
+            return Json(projectList);
+        }
 
 
 
@@ -83,6 +99,16 @@ namespace ProjectUploader.Controllers
         [HttpPost]
         public async Task<IActionResult> UploadProjectDetails(IFormFile file, string AuditID, string Project)
         {
+            var allowedExtensions = new[] { ".xls", ".xlsx", ".xlsm" };
+
+            var fileExtension = Path.GetExtension(file.FileName).ToLower();
+            if (!allowedExtensions.Contains(fileExtension))
+            {
+                return Json(new { success = false, error = "Only .xlsx files are supported. Please save the file as Excel Workbook (*.xlsx) and try again." });
+            }
+
+
+
             Project = Regex.Replace(Project.Trim(), @"\s+", " ");
             if (string.IsNullOrEmpty(AuditID))
             {
@@ -93,6 +119,7 @@ namespace ProjectUploader.Controllers
             {
                 return Json(new { success = false, error = "Please upload a valid Excel file." });
             }
+
 
             var details = new ProjectDetails();
             var sectionData = new Dictionary<string, List<List<string>>>();
@@ -107,7 +134,14 @@ namespace ProjectUploader.Controllers
             using (var stream = file.OpenReadStream())
             using (var workbook = new XLWorkbook(stream))
             {
-                var worksheet = workbook.Worksheet("C3 Checklist");
+                // var worksheet = workbook.Worksheet("C3 Checklist");
+
+                var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.StartsWith("C3", StringComparison.OrdinalIgnoreCase));
+
+                if (worksheet == null)
+                {
+                    throw new Exception("No worksheet starting with 'C3' was found.");
+                }
 
                 // ====== STEP 1: Read ProjectDetails Info ======
                 int startRow = 12;
@@ -147,13 +181,16 @@ namespace ProjectUploader.Controllers
                 }
 
                 // ====== STEP 2: Extract Section Data ======
-                // ====== STEP 2: Extract Section Data ======
-                var allRows = worksheet.RangeUsed().RowsUsed().ToList();
+
+                var range = worksheet.RangeUsed();
+                var allRows = range?.Rows().ToList() ?? new List<IXLRangeRow>();
                 string currentSection = null;
 
-                for (int i = 0; i < allRows.Count; i++)
+                for (int i = 12; i <= worksheet.LastRowUsed().RowNumber(); i++)
                 {
-                    var bVal = allRows[i].Cell(2).GetString().Trim(); // Column B
+                    var row2 = worksheet.Row(i);
+
+                    var bVal = row2.Cell(2).GetString().Trim(); // Column B
 
                     // Identify section headers
                     if (!string.IsNullOrEmpty(bVal) && IsSectionHeader(bVal))
@@ -165,9 +202,9 @@ namespace ProjectUploader.Controllers
 
                     if (!string.IsNullOrEmpty(currentSection))
                     {
-                        var question = allRows[i].Cell(3).GetString().Trim(); // Column C (C&D merged)
-                        var compliance = allRows[i].Cell(5).GetString().Trim(); // Column E
-                        var remarks = allRows[i].Cell(6).GetString().Trim();    // Column F
+                        var question = row2.Cell(3).GetString().Trim();   // Column C (C&D may be merged)
+                        var compliance = row2.Cell(5).GetString().Trim(); // Column E
+                        var remarks = row2.Cell(6).GetString().Trim();    // Column F
 
                         if (!string.IsNullOrEmpty(question))
                         {
@@ -177,10 +214,12 @@ namespace ProjectUploader.Controllers
                 compliance,
                 remarks
             };
+
                             sectionData[currentSection].Add(rowData);
                         }
                     }
                 }
+
 
 
                 // STEP 3: Extract E12 to E21 Color Ratings
@@ -335,7 +374,7 @@ namespace ProjectUploader.Controllers
             {
         "Project Estimation", "Project Planning", "Requirement Management", "Design Related (Not Applicable for Testing projects)",
         "Coding Related (Not Applicable for Testing projects)", "CHANGE MANAGEMENT", "Project management and tracking", "Goal Tracking", "Review Process","Testing Process",
-        "Configuration Management","Defect Prevention (Not Applicable for Testing Projects)","Release & Project Phase Closure",
+        "Configuration Management","Defect Prevention (Not Applicable for Testing Projects)","Release & Project Phase Closure","Requirement Management","Design","Coding","CODE Review","Testing","Release","PROJECT GOVERNANCE",
     };
 
             return knownHeaders.Any(h => value.Equals(h, StringComparison.OrdinalIgnoreCase));
@@ -668,6 +707,86 @@ $mail.Display()
             return File(bytes, "application/octet-stream", "SendAuditEmail.ps1");
         }
 
+
+        [HttpPost]
+        public IActionResult SendAuditEmail([FromBody] string htmlContent)
+        {
+            try
+            {
+                //string userName = "XYZ"; // replace with dynamic name if needed
+                //string introText = $"<p>Dear {userName},</p><p>Please find below details for the project:</p><br/>";
+                //string finalHtmlBody = introText + htmlContent;
+
+
+                string extractedUserName = "User"; // fallback
+                var htmlDoc = new HtmlDocument();
+                htmlDoc.LoadHtml(htmlContent);
+
+                // Look for td with "Project Manager", then get its next sibling
+                var managerLabelCell = htmlDoc.DocumentNode
+                    .SelectNodes("//td")
+                    ?.FirstOrDefault(td => td.InnerText.Trim() == "Project Manager");
+
+                if (managerLabelCell != null)
+                {
+                    var managerNameCell = managerLabelCell.NextSibling;
+                    while (managerNameCell != null && managerNameCell.Name != "td")
+                    {
+                        managerNameCell = managerNameCell.NextSibling;
+                    }
+
+                    if (managerNameCell != null)
+                    {
+                        extractedUserName = managerNameCell.InnerText.Trim();
+                    }
+                }
+
+
+               // string userName = "Sanjay Sahay";
+                string introText = $@"
+                <p>Dear {extractedUserName},</p>
+                <p>
+                Please find the below-mentioned concern raised by QAG team. Kindly verify and close the concern ASAP.
+                </p>
+                <br/>
+                ";
+
+                string footerText = @"
+                <br/><br/>
+                <p style='color:gray; font-size:smaller;'>
+                PS: This is a system generated message; please do not reply to the email address mentioned above.
+                </p>
+                <p>
+                Thanks,<br/>
+                QAG Team
+                </p>
+                ";
+
+                string finalHtmlBody = introText + htmlContent + footerText;
+
+
+                var message = new MailMessage();
+                message.From = new MailAddress("QAG@rsystems.com");
+                message.To.Add("Manoj.Verma@rsystems.com"); // Replace or dynamically set
+                message.CC.Add("QAG@rsystems.com");
+                message.Subject = "QAG Status Report";
+                message.Body = finalHtmlBody;
+                message.IsBodyHtml = true;
+
+                using (var smtp = new SmtpClient("10.131.253.244", 25)) // Use your SMTP host/port
+                {
+                    smtp.Credentials = new NetworkCredential("QAG@rsystems.com", "");
+                    smtp.EnableSsl = false; // Set as needed
+                    smtp.Send(message);
+                }
+
+                return Ok("Email sent successfully.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "Error sending email: " + ex.Message);
+            }
+        }
 
 
     }

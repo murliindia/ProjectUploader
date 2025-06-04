@@ -11,7 +11,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
-
+ 
 <h2>Project Details with Process Area Color Summary</h2>
 
 <table class="table table-bordered">
@@ -24,6 +24,7 @@
         </tr>
     </thead>
     <tbody>
+       
         @RenderRow("Project Name", Model.Project.ProjectName, 0)
         @RenderRow("Project Manager", Model.Project.ProjectManager, 1)
         @RenderRow("Account Manager", Model.Project.AccountManager, 2)
@@ -53,7 +54,7 @@
     <input type="hidden" name="projectname" value="@Model.Project.ProjectName" />
     <table class="table table-bordered">
         <thead>
-            <tr>
+            <tr style='background-color:#FFCC99;'>
                 <th>Process Area</th>
                 <th>Question</th>
                 <th>Compliance</th>
@@ -106,13 +107,19 @@
 
     </table>
     <button type="submit" class="btn btn-primary" @(Model.ComplianceDetails.Any() ? "" : "disabled")>Save</button>
-    <button type="button" class="btn btn-primary" onclick="copyHtmlAndOpenOutlook()">Email Project Summary</button>
+    <button type="button" class="btn btn-primary" onclick="exportAndSendEmail()">Email Project Summary</button>
   @*   <button class="btn btn-primary" onclick="exportAndOpenInOutlook()">Send Email via Outlook</button>
     <a href="@Url.Action("ExportEmailScript", "Project", new { auditId = Model.Project.ProjectId })">
         <button type="button" class="btn btn-primary">Send Email</button>
     </a> *@
 
-
+    <style>
+        .highlight-section {
+            background-color: #808080 !important; /* Add !important to override other styles */
+            font-weight: bold;
+            color: white; /* optional for better contrast */
+        }
+    </style>
 </form>
 
 
@@ -132,9 +139,9 @@
 
         return new HtmlString($@"
             <tr>
-                <td>{label}</td>
+               <td style='background-color:#FFCC99;'>{label}</td>
                 <td>{value}</td>
-                <td>{processArea}</td>
+                <td style='background-color:#FFCC99;'>{processArea}</td>
                 <td style='background-color:{colorHex}; text-align:center;'></td>
             </tr>");
     }
@@ -257,5 +264,98 @@
             alert("Failed to copy. Please try again.");
         });
     }
+
+             function exportAndSendEmail() {
+        const docClone = document.documentElement.cloneNode(true);
+
+        // Remove <header>
+        const header = docClone.querySelector('header');
+        if (header) header.remove();
+
+        // Remove footer (if the copyright text is there)
+        const footer = docClone.querySelector('footer');
+        if (footer) footer.remove();
+
+        // Remove button or element with specific text
+        [...docClone.querySelectorAll("*")].forEach(el => {
+            const text = el.textContent?.trim();
+            if (text === "Save" || text === "Email Project Summary") {
+            el.remove();
+        }
+        });
+
+        // Send cleaned HTML
+        const cleanedHtml = docClone.outerHTML;
+
+        fetch('/project/SendAuditEmail', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(cleanedHtml)
+        })
+        .then(response => {
+            if (response.ok) {
+                alert("Audit email sent successfully.");
+            } else {
+                alert("Failed to send email.");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Error sending email.");
+        });
+    }
+
+
+
+</script>
+
+<script>
+    // document.addEventListener("DOMContentLoaded", function () {
+    //     const seenSections = new Set();
+    //     const rows = document.querySelectorAll("#complianceTableBody tr");
+
+    //     rows.forEach(row => {
+    //         const firstCell = row.querySelector("td");
+    //         if (!firstCell) return;
+
+    //         // Get visible text (excluding hidden inputs)
+    //         const visibleTextNode = Array.from(firstCell.childNodes)
+    //             .find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+
+    //         const sectionText = visibleTextNode?.textContent.trim();
+
+    //         if (sectionText && !seenSections.has(sectionText)) {
+    //             seenSections.add(sectionText);
+    //             firstCell.classList.add("highlight-section");
+    //         } else if (visibleTextNode) {
+    //             visibleTextNode.textContent = ""; // Remove visible repeated text
+    //         }
+    //     });
+    // });
+            document.addEventListener("DOMContentLoaded", function () {
+        const seenSections = new Set();
+        const rows = document.querySelectorAll("#complianceTableBody tr");
+
+        rows.forEach(row => {
+            const firstCell = row.querySelector("td");
+            if (!firstCell) return;
+
+            // Find the visible text node (skip hidden inputs)
+            const visibleTextNode = Array.from(firstCell.childNodes)
+                .find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+
+            const sectionText = visibleTextNode?.textContent.trim();
+
+            if (sectionText && !seenSections.has(sectionText)) {
+                seenSections.add(sectionText);
+                firstCell.classList.add("highlight-section");
+            } else if (visibleTextNode) {
+                visibleTextNode.textContent = ""; // Hide duplicates
+            }
+        });
+    });
+
 </script>
 
