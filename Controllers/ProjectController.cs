@@ -561,7 +561,8 @@ namespace ProjectUploader.Controllers
                                 QuestionText = reader["QuestionText"].ToString(),
                                 Compliance = reader["Compliance"]?.ToString(),
                                 Remarks = reader["Remarks"]?.ToString(),
-                                ActionItem = reader["ActionItem"]?.ToString()
+                                ActionItem = reader["ActionItem"]?.ToString(),
+                                ClosedDate = reader.IsDBNull(reader.GetOrdinal("ClosedDate"))? (DateTime?)null: Convert.ToDateTime(reader["ClosedDate"]),
                             });
                         }
                     }
@@ -597,7 +598,8 @@ namespace ProjectUploader.Controllers
             SET QuestionText = @QuestionText,
                 Compliance = @Compliance,
                 Remarks = @Remarks,
-                ActionItem = @ActionItem
+                ActionItem = @ActionItem,
+                ClosedDate = CASE WHEN @ActionItem = 'Closed' THEN GETDATE() ELSE NULL END
             WHERE Id = @Id", conn);
 
                     cmd.Parameters.AddWithValue("@QuestionText", item.QuestionText ?? (object)DBNull.Value);
@@ -742,7 +744,7 @@ $mail.Display()
                 }
 
 
-               // string userName = "Sanjay Sahay";
+                // string userName = "Sanjay Sahay";
                 string introText = $@"
                 <p>Dear {extractedUserName},</p>
                 <p>

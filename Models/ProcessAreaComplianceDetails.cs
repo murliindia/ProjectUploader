@@ -9,6 +9,7 @@
         public string Compliance { get; set; }
         public string Remarks { get; set; }
         public string ActionItem { get; set; }
+        public DateTime? ClosedDate { get; set; }
     }
 
 }

@@ -60,6 +60,7 @@
                 <th>Compliance</th>
                 <th>Remarks</th>
                 <th>Action Item</th> <!-- New header -->
+                <th>Closed Date</th>
             </tr>
         </thead>
         <tbody id="complianceTableBody">
@@ -93,6 +94,19 @@
                                 <option value="Pending" selected="@(item.ActionItem?.Trim() == "Pending")">Pending</option>
                                 <option value="Closed" selected="@(item.ActionItem?.Trim() == "Closed")">Closed</option>
                             </select>
+                        </td>
+                        <td>
+                            @if (item.ActionItem?.Trim() == "Closed")
+                            {
+                                if (item.ClosedDate.HasValue)
+                                {
+                                    @item.ClosedDate.Value.ToString("yyyy-MM-dd HH:mm")
+                                }
+                                else
+                                {
+                                    <span class="text-warning">[Missing]</span>
+                                }
+                            }
                         </td>
                     </tr>
                 }
@@ -334,7 +348,31 @@
     //         }
     //     });
     // });
-            document.addEventListener("DOMContentLoaded", function () {
+    //         document.addEventListener("DOMContentLoaded", function () {
+    //     const seenSections = new Set();
+    //     const rows = document.querySelectorAll("#complianceTableBody tr");
+
+    //     rows.forEach(row => {
+    //         const firstCell = row.querySelector("td");
+    //         if (!firstCell) return;
+
+    //         // Find the visible text node (skip hidden inputs)
+    //         const visibleTextNode = Array.from(firstCell.childNodes)
+    //             .find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+
+    //         const sectionText = visibleTextNode?.textContent.trim();
+
+    //         if (sectionText && !seenSections.has(sectionText)) {
+    //             seenSections.add(sectionText);
+    //             firstCell.classList.add("highlight-section");
+    //         } else if (visibleTextNode) {
+    //             visibleTextNode.textContent = ""; // Hide duplicates
+    //         }
+    //     });
+    // });
+
+
+        document.addEventListener("DOMContentLoaded", function () {
         const seenSections = new Set();
         const rows = document.querySelectorAll("#complianceTableBody tr");
 
@@ -342,7 +380,7 @@
             const firstCell = row.querySelector("td");
             if (!firstCell) return;
 
-            // Find the visible text node (skip hidden inputs)
+            // Get visible text node (excluding hidden inputs)
             const visibleTextNode = Array.from(firstCell.childNodes)
                 .find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
 
@@ -350,12 +388,17 @@
 
             if (sectionText && !seenSections.has(sectionText)) {
                 seenSections.add(sectionText);
-                firstCell.classList.add("highlight-section");
+                firstCell.classList.add("highlight-section"); // First time: highlight
             } else if (visibleTextNode) {
-                visibleTextNode.textContent = ""; // Hide duplicates
+                // Repeated: keep simple text with no highlight
+                firstCell.classList.remove("highlight-section");
+                // Optional: You can make font normal if it was bold
+                firstCell.style.fontWeight = "normal";
+                firstCell.style.backgroundColor = "transparent";
             }
         });
     });
+
 
 </script>
 
